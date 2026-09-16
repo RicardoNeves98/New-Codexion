@@ -1,6 +1,6 @@
 #include "codexion.h"
 
-int *display_error(char *inv_arg, int i)
+void display_error(char **argv, int inv_ind)
 {
     char *args[8] = {
         "number_of_coders", "time_to_burnout", "time_to_compile",
@@ -8,39 +8,77 @@ int *display_error(char *inv_arg, int i)
         "dongle_cooldown", "scheduler"
     };
     
-    printf("[ERROR] '%s' is an invalid input for '%s' ", inv_arg, args[i]);
-    if (i < 7)
-        printf("(has to be a positive integer)\n");
-    if (i == 7)
+    printf("Error '%s' is an invalid input for '%s' ",
+           argv[inv_ind], args[inv_ind - 1]);
+    if (inv_ind < 8)
+        printf("(has to be a valid positive integer)\n");
+    if (inv_ind == 8)
         printf("(has to be either 'fifo' or 'edf')\n");
-    return (NULL);
+}
+
+int parse_numbers(char **argv, int *parsed_args)
+{
+    int i;
+    int j;
+
+    i = 0;
+    while (++i < 8)
+    {
+        j = 0;
+        if (argv[i][0] == 0)
+            return (i);
+        while (argv[i][j])
+        {
+            if (argv[i][j] < '0' || argv[i][j] > '9')
+                break ;
+            j++;
+        }
+        if (argv[i][j] == '\0')
+            parsed_args[i] = atoi(argv[i]);
+        else
+            break ;
+    }
+    return (i);
+}
+
+int parse_scheduler(char *scheduler, int *parsed_args)
+{
+    if (strcmp(scheduler, "fifo") == 0)
+    {
+        parsed_args[7] = 0;
+        return (1);
+    }
+    else if (strcmp(scheduler, "edf") == 0)
+    {
+        parsed_args[7] = 1;
+        return (1);
+    }
+    return (0);
 }
 
 int *parsing(int argc, char **argv)
 {
-    int i;
     int num;
     int *parsed_args;
 
-    i = 0;
     if (argc != 9)
-        return (printf("[ERROR] Needs 8 arguments to run\n"), NULL);
+    {
+        printf("Error Needs 8 arguments to run\n");
+        return (NULL);
+    }
     parsed_args = malloc(8 * sizeof(*parsed_args));
     if (!parsed_args)
         return (NULL);
-    while (++i < 8)
+    num = parse_numbers(argv, parsed_args);
+    if (num < 8)
     {
-        num = atoi(argv[i]);
-        if (num <= 0)
-            return (free(parsed_args), display_error(argv[i], i - 1));
-        else
-            parsed_args[i - 1] = num;
+        display_error(argv, num);
+        return (free(parsed_args), NULL);
     }
-    if (strcmp(argv[8], "fifo") == 0)
-        parsed_args[7] = 0;
-    else if (strcmp(argv[8], "edf") == 0)
-        parsed_args[7] = 1;
-    else
-        return (free(parsed_args), display_error(argv[8], 7));
+    if (!parse_scheduler(argv[8], parsed_args))
+    {
+        display_error(argv, 8);
+        return (free(parsed_args), NULL);
+    }
     return (parsed_args);
 }

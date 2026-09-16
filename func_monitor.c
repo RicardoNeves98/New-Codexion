@@ -1,55 +1,74 @@
 #include "codexion.h"
 
-void *finish(struct monitor_state *monitor_info, int error)
+void *finish(struct monitor_state *monitor)
 {
     long time_passed;
     struct timespec now;
 
-    pthread_mutex_lock(monitor_info->output_mutex);
-    clock_gettime(CLOCK_MONOTONIC, &now);
-    time_passed = get_time_diff(now, monitor_info->start_time);
-    if (error || *monitor_info->coders_active)
+    pthread_mutex_lock(monitor->output_mutex);
+    if (clock_gettime(CLOCK_MONOTONIC, &now) == -1)
+        *monitor->error = 1;
+    if (*monitor->error == 0)
     {
-        if (error)
-            printf("%ld Error in pthread_cond_{wait, timedwait}", time_passed);
-        else
-            printf("%ld %d burned out\n", time_passed, monitor_info->deadline->id);
-        *monitor_info->coders_active = 0;
+        time_passed = get_time_diff(now, monitor->start_time);
+        if (*monitor->coders_active > 0)
+        {
+            printf("%ld %d burned out\n", time_passed, monitor->deadline->id);
+            *monitor->coders_active = 0;
+        }
+        else if (*monitor->coders_active == 0)
+            printf("%ld Coders completed the work successfully!\n", time_passed);
     }
-    else if (*monitor_info->coders_active == 0)
-        printf("%ld Coders completed the work successfully!\n", time_passed);
-    pthread_mutex_unlock(monitor_info->output_mutex);
-    pthread_mutex_unlock(&monitor_info->queue->mutex);
+    else
+        printf("Error happened on clock_gettime or pthread_cond_{wait, timedwait}\n");
+    pthread_mutex_unlock(monitor->output_mutex);
+    pthread_mutex_unlock(&monitor->queue->mutex);
     return (NULL);
+}
+
+int wait_deadline(struct thread_vars *queue, struct queue *deadline, int *error)
+{
+    int value;
+
+    pthread_mutex_lock(&queue->mutex);
+    while (deadline->id == 0 && *error == 0)
+    {
+        value = pthread_cond_wait(&queue->cond, &queue->mutex);
+        if (value != 0 || *error == 1)
+        {
+            if (value != 0)
+                *error = 1;
+            pthread_mutex_unlock(&queue->mutex);
+            return (0);
+        }
+    }
+    pthread_mutex_unlock(&queue->mutex);
+    return (1);
 }
 
 void *monitor_func(void *info)
 {
     int value;
-    int coder_num;
     struct timespec time;
-    struct monitor_state *monitor_info;
+    struct monitor_state *monitor;
 
-    monitor_info = (struct monitor_state *)info;
-    pthread_mutex_lock(&monitor_info->queue->mutex);
-    coder_num = *monitor_info->coders_active;
-    while (monitor_info->deadline->id == 0)
+    monitor = (struct monitor_state *)info;
+    if (!check_all(monitor->queue, monitor->coders_active, monitor->error,
+                   monitor->coder_num, monitor->init_limit))
+        return (NULL);
+    if (!wait_deadline(monitor->queue, monitor->deadline, monitor->error))
+        return (finish(monitor));
+    pthread_mutex_lock(&monitor->queue->mutex);
+    while (*monitor->coders_active > 0)
     {
-        value = pthread_cond_wait(&monitor_info->queue->cond,
-                                  &monitor_info->queue->mutex);
-        if (value != 0)
-            return (finish(monitor_info, 1));
-    }
-    while (*monitor_info->coders_active > 0)
-    {
-        time = monitor_info->deadline->time;
-        value = pthread_cond_timedwait(&monitor_info->queue->cond,
-                                       &monitor_info->queue->mutex, &time);
-        print_deadline(monitor_info->deadline, coder_num);
+        time = monitor->deadline->time;
+        value = pthread_cond_timedwait(&monitor->queue->cond,
+                                       &monitor->queue->mutex, &time);
         if (value == ETIMEDOUT)
-            return (finish(monitor_info, 0));
-        else if (value != 0)
-            return (finish(monitor_info, 1));      
+            return (finish(monitor));
+        else if (value != 0 || *monitor->error == 1)
+            return (finish(monitor));
     }
-    return (finish(monitor_info, 0));
+    return (finish(monitor));
 }
+

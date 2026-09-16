@@ -1,8 +1,9 @@
-CFLAGS = -Wall -Wextra -Werror
-
+CFLAGS = -Wall -Wextra -Werror -g
+ 
 SRCS = compile.c deadline_queue.c free_stuff.c func_coder.c func_monitor.c \
-        get_dongle.c init_coders_data.c init_shared_data.c init_threads.c \
-        line_requests.c main.c parsing.c time_conversion.c time_utils.c
+        get_dongle.c get_structs_data.c init_coders_structs.c init_shared_structs.c \
+        init_structs_and_threads.c  line_requests.c main.c parsing.c \
+        request_utils.c time_utils.c shared_utils.c
 
 OBJS = $(SRCS:.c=.o)
 

@@ -1,13 +1,24 @@
 #include "codexion.h"
 
-int *init_coders_active(int coder_num)
+int *init_error(void)
+{
+    int *error;
+
+    error = malloc(sizeof(*error));
+    if (!error)
+        return (printf("Error allocating memory\n"), NULL);
+    *error = 0;
+    return (error);
+}
+
+int *init_coders_active(void)
 {
     int *coders_active;
 
     coders_active = malloc(sizeof(*coders_active));
     if (!coders_active)
         return (printf("Error allocating memory\n"), NULL);
-    *coders_active = coder_num;
+    *coders_active = -1;
     return (coders_active);
 }
 
@@ -26,7 +37,7 @@ pthread_mutex_t *init_output_mutex(void)
     return (output_mutex);
 }
 
-struct queue *init_deadline(int coder_num, struct timespec start_burnout)
+struct queue *init_deadline(int coder_num)
 {
     int i;
     struct queue *deadline;
@@ -38,8 +49,9 @@ struct queue *init_deadline(int coder_num, struct timespec start_burnout)
     while (++i < coder_num)
     {
         deadline[i].id = 0;
-        deadline[i].time = add_curr_time(start_burnout);
+        deadline[i].time.tv_sec = 0;
+        deadline[i].time.tv_nsec = 0;
     }
     return (deadline);
 }
- 
+

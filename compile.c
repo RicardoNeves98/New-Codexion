@@ -1,68 +1,68 @@
 #include "codexion.h"
 
-void update_deadline_queue(struct coders_state *coder_info, int compile)
+int update_deadline_queue(struct coders_state *coder, int compile)
 {
-    int finished;
-
-    pthread_mutex_lock(&coder_info->queue->mutex);
-    if (compile == 1)
+    pthread_mutex_lock(&coder->queue->mutex);
+    if (!deadline_update(coder, compile))
     {
-        finished = 0;
-        if (coder_info->num_compiles == coder_info->data->comp_required)
-            finished = 1;
-        comp_deadline_update(coder_info->deadline, coder_info->data->coder_num,
-                             coder_info->id, coder_info->data->comp_burnout, finished);
+        pthread_mutex_unlock(&coder->queue->mutex);
+        return (0);
     }
-    else
-        first_deadline_update(coder_info->deadline, coder_info->id,
-                              coder_info->data->start_burnout);
-    pthread_cond_signal(&coder_info->queue->cond);
-    pthread_mutex_unlock(&coder_info->queue->mutex);
+    pthread_cond_signal(&coder->queue->cond);
+    pthread_mutex_unlock(&coder->queue->mutex);
+    return (1);
 }
 
-void update_dongle_state(struct dongle *curr_dongle)
+int update_dongles_state(struct dongle *left, struct dongle *right)
 {
-    pthread_mutex_lock(&curr_dongle->mutex);
-    curr_dongle->is_free = 1;
-    curr_dongle->next_aval = add_curr_time(curr_dongle->cooldown);
-    pthread_mutex_unlock(&curr_dongle->mutex);
+    struct timespec now;
+    struct timespec next_aval;
+
+    if (clock_gettime(CLOCK_REALTIME, &now) == -1)
+        return (0);
+    next_aval = add_time(now, left->cooldown);
+    pthread_mutex_lock(&left->mutex);
+    left->is_free = 1;
+    left->next_aval = next_aval;
+    pthread_mutex_unlock(&left->mutex);
+    pthread_mutex_lock(&right->mutex);
+    right->is_free = 1;
+    right->next_aval = next_aval;
+    pthread_mutex_unlock(&right->mutex);
+    return (1);
 }
 
-void write_output(char *type, struct coders_state *coder_info)
+void signal_and_update(struct coders_state *coder, struct timespec now)
+{
+    pthread_mutex_lock(&coder->sync->mutex);
+    pthread_cond_broadcast(&coder->sync->cond);
+    if (coder->last_compile)
+        coder->last_compile[coder->id - 1] = now;
+    pthread_mutex_unlock(&coder->sync->mutex);
+}
+
+int go_work(struct coders_state *coder)
 {
     struct timespec now;
 
-    pthread_mutex_lock(&coder_info->queue->mutex);
-    if (*coder_info->coders_active > 0)
-    {
-        pthread_mutex_lock(coder_info->output_mutex);
-        clock_gettime(CLOCK_MONOTONIC, &now);
-        printf("%ld %d is %s\n", get_time_diff(now, coder_info->data->start_time),
-               coder_info->id, type);
-        pthread_mutex_unlock(coder_info->output_mutex);
-    }
-    pthread_mutex_unlock(&coder_info->queue->mutex);
-}
-
-void go_work(struct coders_state *coder_info)
-{
-    struct timespec now;
-
-    coder_info->num_compiles += 1;
-    update_deadline_queue(coder_info, 1);
-    write_output("compiling", coder_info);
-    usleep(coder_info->data->time_to_compile * 1000);
-    clock_gettime(CLOCK_REALTIME, &now);
-    update_dongle_state(coder_info->left);
-    update_dongle_state(coder_info->right);
-    pthread_mutex_lock(&coder_info->sync->mutex);
-    pthread_cond_broadcast(&coder_info->sync->cond);
-    coder_info->last_compile[coder_info->id - 1] = now;
-    pthread_mutex_unlock(&coder_info->sync->mutex);
-    write_output("debugging", coder_info);
-    usleep(coder_info->data->time_to_debug * 1000);
-    write_output("refactoring", coder_info);
-    usleep(coder_info->data->time_to_refactor * 1000);
+    coder->num_compiles += 1;
+    if (!update_deadline_queue(coder, 1))
+        return (0);
+    if (!write_message(coder, "is compiling"))
+        return (0);
+    usleep(coder->data->time_to_compile * 1000);
+    if (clock_gettime(CLOCK_REALTIME, &now) == -1)
+        return (0);
+    if (!update_dongles_state(coder->left, coder->right))
+        return (0);
+    signal_and_update(coder, now);
+    if (!write_message(coder, "is debugging"))
+        return (0);
+    usleep(coder->data->time_to_debug * 1000);
+    if (!write_message(coder, "is refactoring"))
+        return (0);
+    usleep(coder->data->time_to_refactor * 1000);
+    return (1);
 }
 
 // Check if change in the last_compile does not need to be earlier 

@@ -26,21 +26,19 @@ void first_deadline_update(struct queue *deadline, int coder_id,
 {
     int start;
     int end;
-    struct timespec coder_burnout;
 
-    coder_burnout = add_curr_time(burnout);
     start = 0;
     end = 0;
     while (deadline[start].id != 0)
         start++;
     while (deadline[end].id != 0)
     {
-        if (get_time_diff(coder_burnout, deadline[end].time) < 0)
+        if (get_time_diff(burnout, deadline[end].time) < 0)
             break;
         end++;
     }
     deadline[start].id = coder_id; 
-    deadline[start].time = coder_burnout;
+    deadline[start].time = burnout;
     move_around(deadline, start, end);
 }
 
@@ -61,8 +59,33 @@ void comp_deadline_update(struct queue *deadline, int coder_num, int coder_id,
             end++;
     if (finished == 1)
         deadline[start].id = -1;
-    deadline[start].time = add_curr_time(burnout);
+    deadline[start].time = burnout;
     move_around(deadline, start, end);
+}
+
+int deadline_update(struct coders_state *coder, int compile)
+{
+    int finished;
+    struct timespec now;
+    struct timespec burnout;
+
+    finished = 0;
+    if (clock_gettime(CLOCK_REALTIME, &now) == -1)
+        return (0);
+    if (compile)
+    {
+        burnout = add_time(now, coder->data->comp_burnout);
+        if (coder->num_compiles == coder->data->comp_required)
+            finished = 1;
+        comp_deadline_update(coder->deadline, coder->data->coder_num,
+                             coder->id, burnout, finished);
+    }
+    else
+    {
+        burnout = add_time(now, coder->data->start_burnout);
+        first_deadline_update(coder->deadline, coder->id, burnout);
+    }
+    return (1);
 }
 
 void print_deadline(struct queue *deadline, int coder_num)

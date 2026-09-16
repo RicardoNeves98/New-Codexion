@@ -9,68 +9,63 @@ void free_dongles(struct dongle *dongles, int index, int line)
         printf("Error initializing mutex\n");
         free(dongles[index].line);
     }
-    else
+    while (--index >= 0)
     {
-        while (--index >= 0)
-        {
-            pthread_mutex_destroy(&dongles[index].mutex);
-            free(dongles[index].line);
-        }
-        free(dongles);
+        free(dongles[index].line);
+        pthread_mutex_destroy(&dongles[index].mutex);
     }
+    free(dongles);
 }
 
-void free_coder_data(struct static_data *data, struct thread_vars *sync,
-                     struct timespec *last_compile)
+void free_thread_vars(struct thread_vars *vars)
 {
-    if (sync)
+    if (vars)
     {
-        pthread_mutex_destroy(&sync->mutex);
-        pthread_cond_destroy(&sync->cond);
-        free(sync);
+        pthread_mutex_destroy(&vars->mutex);
+        pthread_cond_destroy(&vars->cond);
+        free(vars);
     }
-    if (data && data->dongles)
-        free_dongles(data->dongles, data->coder_num, 0);
-    if (last_compile)
-        free(last_compile);
-    if (data)
-        free(data);
 }
 
-void free_shared_data(int *coders_active, pthread_mutex_t *output_mutex,
-                      struct queue *deadline, struct thread_vars *queue)
+void free_coders_data(struct coders_state *coder)
 {
-    if (coders_active)
-        free(coders_active);
-    if (output_mutex)
-    {
-        pthread_mutex_destroy(output_mutex);
-        free(output_mutex);
-    }
-    if (deadline)
-        free(deadline);
-    if (queue)
-    {
-        pthread_mutex_destroy(&queue->mutex);
-        pthread_cond_destroy(&queue->cond);
-        free(queue);
-    }
+    free(coder->error);
+    free(coder->coders_active);
+    if (coder->data && coder->data->dongles)
+        free_dongles(coder->data->dongles, coder->data->coder_num, 0);
+    free(coder->data);
+    free(coder->deadline);
+    free(coder->last_compile);
+    if (coder->sync)
+        free_thread_vars(coder->sync);
+    if (coder->queue)
+        free_thread_vars(coder->queue);
+    if (coder->output_mutex)
+        pthread_mutex_destroy(coder->output_mutex);
+    free(coder->output_mutex);
 }
 
-void free_all(struct coders_state *coder_info, struct monitor_state *monitor_info,
+void free_monitor_data(struct monitor_state *monitor)
+{
+    free(monitor->error);
+    free(monitor->coders_active);
+    free(monitor->deadline);
+    if (monitor->queue)
+        free_thread_vars(monitor->queue);
+    if (monitor->output_mutex)
+        pthread_mutex_destroy(monitor->output_mutex);
+    free(monitor->output_mutex);
+}
+
+void free_all(struct coders_state *coder, struct monitor_state *monitor,
               pthread_t *threads)
 {
-    if (coder_info)
-    {
-        free_coder_data(coder_info->data, coder_info->sync, coder_info->last_compile);
-        free_shared_data(coder_info->coders_active, coder_info->output_mutex,
-                         coder_info->deadline, coder_info->queue);
-    }
-    else if (monitor_info)
-        free_shared_data(monitor_info->coders_active, monitor_info->output_mutex,
-                         monitor_info->deadline, monitor_info->queue);
-    free(coder_info);
-    free(monitor_info);
+    if (coder)
+        free_coders_data(coder);
+    else if (monitor)
+        free_monitor_data(monitor);
+    free(coder);
+    free(monitor);
     free(threads);
 }
 

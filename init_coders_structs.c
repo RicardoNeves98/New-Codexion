@@ -34,14 +34,11 @@ struct static_data *init_data(int *parsed_args)
     data->time_to_refactor = parsed_args[4];
     data->comp_required = parsed_args[5];
     data->cooldown = parsed_args[6];
+    data->scheduler = parsed_args[7];
     data->start_burnout = ms_to_timespec(parsed_args[1]);
-    data->comp_burnout = add_time(data->start_burnout,
-                                  ms_to_timespec(data->time_to_compile));
+    data->comp_burnout = ms_to_timespec(parsed_args[1] + parsed_args[2]);
     data->max_wait = ms_to_timespec(parsed_args[2]);
-    if (parsed_args[7] == 0)
-        data->place_request = place_fifo_request;
-    else if (parsed_args[7] == 1)
-        data->place_request = place_edf_request;
+    data->dongles = NULL;
     return (data);
 }
 
@@ -67,9 +64,10 @@ struct dongle *init_dongles(int coder_num, struct timespec cooldown)
     dongles = malloc(coder_num * sizeof(*dongles));
     if (!dongles)
         return (printf("Error allocation memory\n"), NULL);
+    now.tv_sec = 0;
+    now.tv_nsec = 0;
     while (++i < coder_num)
     {
-        clock_gettime(CLOCK_REALTIME, &now);
         dongles[i].next_aval = now;
         dongles[i].id = i + 1;
         dongles[i].is_free = 1;
@@ -83,12 +81,14 @@ struct dongle *init_dongles(int coder_num, struct timespec cooldown)
     return (dongles);
 }
 
-struct timespec *init_last_compile(int coder_num)
+struct timespec *init_last_compile(int coder_num, int scheduler)
 {
     int i;
     struct timespec *last_compile;
 
     i = -1;
+    if (scheduler == 0)
+        return (NULL);
     last_compile = malloc(coder_num * sizeof(*last_compile));
     if (!last_compile)
         return (printf("Error allocating memory\n"), NULL);
