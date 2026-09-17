@@ -12,8 +12,10 @@ void fill_data(struct coders_state *coders, struct static_data *data,
         coders[i].id = i + 1;
         coders[i].num_compiles = 0;
         coders[i].data = data;
-        coders[i].left = &dongles[i]; 
+        coders[i].left = &dongles[i];
         coders[i].right = &dongles[(i + 1) % data->coder_num];
+        if (coders[i].left == coders[i].right)
+            coders[i].right = NULL;
         coders[i].sync = sync; 
         coders[i].last_compile = last_compile;
     }

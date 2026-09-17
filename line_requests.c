@@ -52,13 +52,9 @@ void remove_requests(int *line, int coder_id)
         line[1] = 0;
 }
 
-void print_lines(struct dongle *left, struct dongle *right,
-                 pthread_mutex_t *output_mutex)
+void print_lines(struct dongle *left, struct dongle *right)
 {
-    pthread_mutex_lock(output_mutex);
     printf("Dongle%d Line -> %d %d\n", left->id, left->line[0], left->line[1]);
     printf("Dongle%d Line -> %d %d\n", right->id, right->line[0], right->line[1]);
-    pthread_mutex_unlock(output_mutex);
-}  
-
+}
 

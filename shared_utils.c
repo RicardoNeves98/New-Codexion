@@ -36,6 +36,7 @@ int check_all(struct thread_vars *queue, int *coders_active, int *error,
         value = pthread_cond_timedwait(&queue->cond, &queue->mutex, &init_limit);
         if (value == ETIMEDOUT)
         {
+            *coders_active = -1;
             pthread_mutex_unlock(&queue->mutex);
             return (0);
         }

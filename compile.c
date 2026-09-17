@@ -2,12 +2,27 @@
 
 int update_deadline_queue(struct coders_state *coder, int compile)
 {
+    int finished;
+    struct timespec now;
+    struct timespec burnout;
+
     pthread_mutex_lock(&coder->queue->mutex);
-    if (!deadline_update(coder, compile))
+    if (clock_gettime(CLOCK_REALTIME, &now) == -1)
     {
         pthread_mutex_unlock(&coder->queue->mutex);
         return (0);
     }
+    finished = 0;
+    if (compile == 1)
+    {
+        if (coder->num_compiles == coder->data->comp_required)
+            finished = 1;
+        burnout = add_time(now, coder->data->comp_burnout);
+    }
+    else
+        burnout = add_time(now, coder->data->start_burnout);
+    deadline_update(coder->deadline, burnout, coder->data->coder_num,
+                    coder->id, finished);
     pthread_cond_signal(&coder->queue->cond);
     pthread_mutex_unlock(&coder->queue->mutex);
     return (1);
@@ -18,7 +33,7 @@ int update_dongles_state(struct dongle *left, struct dongle *right)
     struct timespec now;
     struct timespec next_aval;
 
-    if (clock_gettime(CLOCK_REALTIME, &now) == -1)
+    if (clock_gettime(CLOCK_MONOTONIC, &now) == -1)
         return (0);
     next_aval = add_time(now, left->cooldown);
     pthread_mutex_lock(&left->mutex);

@@ -85,11 +85,11 @@ int go_work(struct coders_state *coder);
 
 // deadline_queue.c
 void move_around(struct queue *deadline, int start, int end);
-void first_deadline_update(struct queue *deadline, int coder_id,
-                           struct timespec burnout);
-void comp_deadline_update(struct queue *deadline, int coder_num, int coder_id,
-                          struct timespec burnout, int finished);
-int deadline_update(struct coders_state *coder, int compile);
+int get_end_spot(struct queue *deadline, struct timespec burnout, int on_queue,
+                 int coder_num, int coder_id, int finished);
+void deadline_update(struct queue *deadline, struct timespec burnout, int coder_num,
+                     int coder_id, int finished);
+void print_deadline(struct queue *deadline, int coder_num);
 
 // free_stuff.c
 void free_dongles(struct dongle *dongles, int index, int line);
@@ -157,8 +157,7 @@ void place_edf_request(int *line, int coder_id, struct timespec *last_compile);
 void place_request(int *line, int coder_id, struct timespec *last_compile);
 void update_line(int *line);
 void remove_requests(int *line, int coder_id);
-void print_lines(struct dongle *left, struct dongle *right,
-                 pthread_mutex_t *output_mutex);
+void print_lines(struct dongle *left, struct dongle *right);
 
 // parsing.c
 void display_error(char **argv, int inv_ind);

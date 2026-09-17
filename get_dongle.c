@@ -5,14 +5,20 @@ int check_free(struct dongle *left, struct dongle *right, int coder_id)
     int dongles_aval;
 
     dongles_aval = 0;
-    pthread_mutex_lock(&left->mutex); 
-    if (left->line[0] == coder_id && left->is_free)
-        dongles_aval += 1;
-    pthread_mutex_unlock(&left->mutex);
-    pthread_mutex_lock(&right->mutex);
-    if (right->line[0] == coder_id && right->is_free)
-        dongles_aval += 1;
-    pthread_mutex_unlock(&right->mutex);
+    if (left)
+    {
+        pthread_mutex_lock(&left->mutex);
+        if (left->line[0] == coder_id && left->is_free)
+            dongles_aval += 1;
+        pthread_mutex_unlock(&left->mutex);
+    }
+    if (right)
+    {
+        pthread_mutex_lock(&right->mutex);
+        if (right->line[0] == coder_id && right->is_free)
+            dongles_aval += 1;
+        pthread_mutex_unlock(&right->mutex);
+    }
     return (dongles_aval);
 }
 
@@ -25,7 +31,7 @@ int wait_and_write(struct timespec left_aval, struct timespec right_aval,
     long max_wait;
     struct timespec now;
 
-    if (clock_gettime(CLOCK_REALTIME, &now) == -1)
+    if (clock_gettime(CLOCK_MONOTONIC, &now) == -1)
         return (0);
     left_wait = get_time_diff(left_aval, now);
     right_wait = get_time_diff(right_aval, now);
@@ -35,10 +41,10 @@ int wait_and_write(struct timespec left_aval, struct timespec right_aval,
         right_wait = 0;
     min_wait = get_min_time(left_wait, right_wait);
     max_wait = get_max_time(left_wait, right_wait);
-    usleep(min_wait);
+    usleep(min_wait * 1000);
     if (!write_message(coder, "has taken a dongle"))
         return (0);
-    usleep(max_wait - min_wait);
+    usleep((max_wait - min_wait) * 1000);
     if (!write_message(coder, "has taken a dongle"))
         return (0);
     return (1);

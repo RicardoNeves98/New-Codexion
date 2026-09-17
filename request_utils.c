@@ -3,12 +3,18 @@
 void delete_requests(struct dongle *left, struct dongle *right, int coder_id,
                      struct thread_vars *sync)
 {
-    pthread_mutex_lock(&left->mutex);
-    remove_requests(left->line, coder_id);
-    pthread_mutex_unlock(&left->mutex);
-    pthread_mutex_lock(&right->mutex);
-    remove_requests(right->line, coder_id);
-    pthread_mutex_unlock(&right->mutex);
+    if (left)
+    {
+        pthread_mutex_lock(&left->mutex);
+        remove_requests(left->line, coder_id);
+        pthread_mutex_unlock(&left->mutex);
+    }
+    if (right)
+    {
+        pthread_mutex_lock(&right->mutex);
+        remove_requests(right->line, coder_id);
+        pthread_mutex_unlock(&right->mutex);
+    }
     pthread_mutex_lock(&sync->mutex);
     pthread_cond_broadcast(&sync->cond);
     pthread_mutex_unlock(&sync->mutex);
@@ -19,7 +25,7 @@ int check_requests(struct dongle *left, struct dongle *right, int coder_id,
                    struct thread_vars *sync)
 {
     pthread_mutex_lock(&left->mutex);
-    if (left->line[0] == coder_id)
+    if (left || left->line[0] == coder_id)
     {
         pthread_mutex_unlock(&left->mutex);
         delete_requests(left, right, coder_id, sync);
@@ -27,7 +33,7 @@ int check_requests(struct dongle *left, struct dongle *right, int coder_id,
     }
     pthread_mutex_unlock(&left->mutex);
     pthread_mutex_lock(&right->mutex);
-    if (right->line[0] == coder_id)
+    if (right || right->line[0] == coder_id)
     {
         pthread_mutex_unlock(&right->mutex);
         delete_requests(right, left, coder_id, sync);

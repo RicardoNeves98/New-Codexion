@@ -55,15 +55,16 @@ void *monitor_func(void *info)
     monitor = (struct monitor_state *)info;
     if (!check_all(monitor->queue, monitor->coders_active, monitor->error,
                    monitor->coder_num, monitor->init_limit))
-        return (NULL);
+        return (finish(monitor));
     if (!wait_deadline(monitor->queue, monitor->deadline, monitor->error))
         return (finish(monitor));
     pthread_mutex_lock(&monitor->queue->mutex);
+    time = monitor->deadline->time;
     while (*monitor->coders_active > 0)
     {
-        time = monitor->deadline->time;
         value = pthread_cond_timedwait(&monitor->queue->cond,
                                        &monitor->queue->mutex, &time);
+        time = monitor->deadline->time;
         if (value == ETIMEDOUT)
             return (finish(monitor));
         else if (value != 0 || *monitor->error == 1)
@@ -72,3 +73,7 @@ void *monitor_func(void *info)
     return (finish(monitor));
 }
 
+// I need to fix this problem 
+// I could have a solution that was every time it went on timeout and all actually
+// Have compiled than check the deadline id and if it is -1 just make him sleep more 
+// That could he easily done by just adding something to the deadline time 

@@ -25,9 +25,13 @@ int main(int argc, char **argv)
 }
 
 // Testing cases 
-// -> Test is parsing is working well 
+// -> Test is parsing is working well CHECK  
 // -> Test bad allocation in coder, monitor or threads CHECK 
-// -> Test bad allocation in structs for coder and monitor data CHECK
+// -> Test bad allocation in structs for coder and monitor data CHECK 
 // -> Test fail in initializing threads CHECK 
-// -> Test error in pthread_cond_{wait, timedwait} and clock_gettime
+// -> Test error in pthread_cond_{wait, timedwait} and clock_gettime CHECK 
 // -> Check if the lines are good and if the deadline is also well 
+
+// Note -> Dont forget that in the Codexion it says 'Reject invalid such as negative
+// numbers, non-integers (...)' but I also reject 0 as a value 
+

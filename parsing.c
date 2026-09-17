@@ -8,12 +8,12 @@ void display_error(char **argv, int inv_ind)
         "dongle_cooldown", "scheduler"
     };
     
-    printf("Error '%s' is an invalid input for '%s' ",
+    printf("Error '%s' is invalid for '%s' ",
            argv[inv_ind], args[inv_ind - 1]);
     if (inv_ind < 8)
-        printf("(has to be a valid positive integer)\n");
+        printf("(only valid positive integers)\n");
     if (inv_ind == 8)
-        printf("(has to be either 'fifo' or 'edf')\n");
+        printf("(only 'fifo' or 'edf')\n");
 }
 
 int parse_numbers(char **argv, int *parsed_args)
@@ -25,7 +25,7 @@ int parse_numbers(char **argv, int *parsed_args)
     while (++i < 8)
     {
         j = 0;
-        if (argv[i][0] == 0)
+        if (argv[i][0] == '0')
             return (i);
         while (argv[i][j])
         {
@@ -34,7 +34,7 @@ int parse_numbers(char **argv, int *parsed_args)
             j++;
         }
         if (argv[i][j] == '\0')
-            parsed_args[i] = atoi(argv[i]);
+            parsed_args[i - 1] = atoi(argv[i]);
         else
             break ;
     }
@@ -70,7 +70,7 @@ int *parsing(int argc, char **argv)
     if (!parsed_args)
         return (NULL);
     num = parse_numbers(argv, parsed_args);
-    if (num < 8)
+    if (1 <= num && num <= 7)
     {
         display_error(argv, num);
         return (free(parsed_args), NULL);
