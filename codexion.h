@@ -9,18 +9,6 @@
 #include <pthread.h>
 #include <errno.h>
 
-
-// What could really happen: Lets say we have 5 coders and that they make the requests
-// all in a row so coder1 if first coder2 is second and so on 
-// coder1 get dongle1 and dongle2 and starts compiling 
-// coder2 is in line for dongle2 and first for dongle3 
-// coder3 is in line for dongle3 and first for dongle4
-// coder4 is in line for dongle4 and first for dongle5
-// coder5 is in line for both dongle5 and dongle1 
-// What happens in this case with the structure we have? 
-// What would happen if we has no pull back at all? 1 2 has taken a dongle
-
-
 typedef struct coders_state
 {
     int id;

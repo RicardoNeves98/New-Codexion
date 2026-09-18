@@ -37,7 +37,7 @@ struct static_data *init_data(int *parsed_args)
     data->scheduler = parsed_args[7];
     data->start_burnout = ms_to_timespec(parsed_args[1]);
     data->comp_burnout = ms_to_timespec(parsed_args[1] + parsed_args[2]);
-    data->max_wait = ms_to_timespec(parsed_args[2] + 100);
+    data->max_wait = ms_to_timespec(1.1 * parsed_args[2]);
     data->dongles = NULL;
     return (data);
 }

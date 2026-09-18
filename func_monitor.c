@@ -35,6 +35,7 @@ int wait_deadline(struct thread_vars *queue, struct queue *deadline, int *error)
 {
     int value;
 
+    pthread_mutex_lock(&queue->mutex);
     while (deadline->id == 0 && *error == 0)
     {
         value = pthread_cond_wait(&queue->cond, &queue->mutex);
@@ -42,7 +43,11 @@ int wait_deadline(struct thread_vars *queue, struct queue *deadline, int *error)
             *error = 1;
     }
     if (*error == 1)
+    {
+        pthread_mutex_unlock(&queue->mutex);
         return (0);
+    }
+    pthread_mutex_unlock(&queue->mutex);
     return (1);
 }
 
@@ -85,7 +90,7 @@ void *monitor_func(void *info)
         return (NULL);
     if (!wait_deadline(monitor->queue, monitor->deadline, monitor->error))
         return (error_output(monitor->output_mutex));
-    pthread_mutex_unlock(&monitor->queue->mutex);
+    pthread_mutex_lock(&monitor->queue->mutex);
     burned_coder = monitor_coders(monitor->deadline, monitor->queue,
                                   monitor->coders_active, monitor->error);
     final_output(monitor->output_mutex, monitor->start_time, monitor->coders_active,
