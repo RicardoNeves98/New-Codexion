@@ -23,37 +23,40 @@ int write_message(struct coders_state *coder, char *action)
     return (keep_going);
 }
 
-int check_all(struct thread_vars *queue, int *coders_active, int *error,
-              int coder_num, struct timespec init_limit)
+int wait_for_threads(struct thread_vars *queue, int *coders_active, int *error,
+                     int coder_num, struct timespec init_limit)
 {
     int value;
 
-    pthread_mutex_lock(&queue->mutex);
-    *coders_active += 1;
-    pthread_cond_broadcast(&queue->cond);
     while (*coders_active < coder_num && *error == 0)
     {
         value = pthread_cond_timedwait(&queue->cond, &queue->mutex, &init_limit);
         if (value == ETIMEDOUT)
         {
             *coders_active = -1;
-            pthread_mutex_unlock(&queue->mutex);
             return (0);
         }
         else if (value != 0)
         {
             *error = 1;
             pthread_cond_broadcast(&queue->cond);
-            pthread_mutex_unlock(&queue->mutex);
-            return (0);
         }
     }
     if (*error == 1)
-    {
-        pthread_mutex_unlock(&queue->mutex);
-        return (0);
-    }
-    pthread_mutex_unlock(&queue->mutex);
+        return (-1);
     return (1);
+}
+
+int check_all(struct thread_vars *queue, int *coders_active, int *error,
+              int coder_num, struct timespec init_limit)
+{
+    int state;
+
+    pthread_mutex_lock(&queue->mutex);
+    *coders_active += 1;
+    pthread_cond_broadcast(&queue->cond);
+    state = wait_for_threads(queue, coders_active, error, coder_num, init_limit);
+    pthread_mutex_unlock(&queue->mutex);
+    return (state);
 }
 

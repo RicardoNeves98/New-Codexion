@@ -76,8 +76,8 @@ void *coder_func(void *info)
 
     has_request = 0;
     coder = (struct coders_state *)info;
-    if (!check_all(coder->queue, coder->coders_active, coder->error,
-                   coder->data->coder_num, coder->init_limit))
+    if (check_all(coder->queue, coder->coders_active, coder->error,
+                  coder->data->coder_num, coder->init_limit) != 1)
         return (NULL);
     if (!update_deadline_queue(coder, 0))
         return (error_exit(coder->queue, coder->error));

@@ -9,6 +9,18 @@
 #include <pthread.h>
 #include <errno.h>
 
+
+// What could really happen: Lets say we have 5 coders and that they make the requests
+// all in a row so coder1 if first coder2 is second and so on 
+// coder1 get dongle1 and dongle2 and starts compiling 
+// coder2 is in line for dongle2 and first for dongle3 
+// coder3 is in line for dongle3 and first for dongle4
+// coder4 is in line for dongle4 and first for dongle5
+// coder5 is in line for both dongle5 and dongle1 
+// What happens in this case with the structure we have? 
+// What would happen if we has no pull back at all? 1 2 has taken a dongle
+
+
 typedef struct coders_state
 {
     int id;
@@ -108,9 +120,12 @@ int get_dongles_and_compile(struct coders_state *coder);
 void *coder_func(void *info);
 
 // func_monitor.c
-void *finish(struct monitor_state *monitor);
-int wait_deadline_signal(struct thread_vars *queue, struct queue *deadline,
-                         int *error);
+void *error_output(pthread_mutex_t *output_mutex);
+void final_output(pthread_mutex_t *output_mutex, struct timespec start,
+                  int *coders_active, int burned_coder);
+int wait_deadline(struct thread_vars *queue, struct queue *deadline, int *error);
+int monitor_coders(struct queue *deadline, struct thread_vars *queue,
+                   int *coders_active, int *error);
 void *monitor_func(void *info);
 
 // get_dongle.c
@@ -181,6 +196,8 @@ struct timespec add_time(struct timespec time1, struct timespec time2);
 
 // shared_utils.c
 int write_message(struct coders_state *coder, char *action);
+int wait_for_threads(struct thread_vars *queue, int *coders_active, int *error,
+                     int coder_num, struct timespec init_limit);
 int check_all(struct thread_vars *queue, int *coders_active, int *error,
               int coder_num, struct timespec init_limit);
 
